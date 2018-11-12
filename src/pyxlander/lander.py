@@ -2,14 +2,16 @@
 '''
 
 import pyxel
+from twod import Point
 import random
 from .utils import constrain
 from .catalog import LanderHull, Exhaust_L, Exhaust_R, Exhaust_D
+from .sprite import Sprite
 
-class Lander:
+class Lander(Point):
     
     def __init__(self, x, y, fuel=1000, mass=1):
-        self.xy = int(x),int(y)
+        super().__init__(x, y)
         self.thrust_x = 0       # left/right
         self.thrust_y = 0       # down only        
         self.dx = 0
@@ -31,9 +33,9 @@ class Lander:
             return self._hull
         except AttributeError:
             pass
-        self._hull = LanderHull(*self.xy)
+        self._hull = Sprite(self.x, self.y, LanderHull)
         return self._hull
-
+        
     @property
     def exhaust_l(self):
 
@@ -41,8 +43,8 @@ class Lander:
             return self._exhaust_l
         except AttributeError:
             pass
-        x,y  = self.xy
-        self._exhaust_l = Exhaust_L(x-8, y+3)
+
+        self._exhaust_l = Sprite(self.x-8, self.y+3, Exhaust_L)
         return self._exhaust_l
 
     @property
@@ -51,8 +53,7 @@ class Lander:
             return self._exhaust_r
         except AttributeError:
             pass
-        x,y  = self.xy        
-        self._exhaust_r = Exhaust_R(x+13, y+3)
+        self._exhaust_r = Sprite(self.x+13, self.y+3, Exhaust_R)
         return self._exhaust_r
 
 
@@ -62,8 +63,7 @@ class Lander:
             return self._exhaust_d
         except AttributeError:
             pass
-        x,y = self.xy
-        self._exhaust_d = Exhaust_D(x+4, y+13)
+        self._exhaust_d = Sprite(self.x+4, self.y+13, Exhaust_D)
         return self._exhaust_d
     
 
@@ -81,13 +81,12 @@ class Lander:
             self.nav_light_colors.reverse()
 
         if pyxel.frame_count % 5 == 0:
-            self.exhaust_d.w *= -1
+            self.exhaust_d.bitmap.w *= -1
 
     def draw_hull(self):
         '''
         '''
-
-        pyxel.blt(*self.hull)
+        self.hull.draw()
         pyxel.pix(*self.nav_port, self.nav_light_colors[0])
         pyxel.pix(*self.nav_stbd, self.nav_light_colors[1])
 
@@ -97,8 +96,7 @@ class Lander:
         '''
         if self.thrust_y == 0:
             return
-        x,y = self.xy
-        pyxel.blt(*self.exhaust_d) #.scale(h=self.thrust_y))
+        self.exhaust_d.draw()
     
 
     def draw_thruster_exhaust(self):
@@ -107,9 +105,10 @@ class Lander:
             return
         
         if self.thrust_x < 0:
-            pyxel.blt(*self.exhaust_l)
+            self.exhaust_l.draw()
         else:
-            pyxel.blt(*self.exhaust_r)
+            self.exhaust_r.draw()            
+
 
 
     def draw(self):
