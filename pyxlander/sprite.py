@@ -1,7 +1,8 @@
-'''
-'''
+"""
+"""
 
 from twod import Point, Rect
+
 
 class Sprite(Point):
     def __init__(self, x, y, bitmap):
