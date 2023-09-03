@@ -85,6 +85,29 @@ class Lander(Rect):
     def is_landed(self) -> bool:
         return self.status == Status.Landed
 
+    def apply_input(self) -> None:
+
+        if self.status not in [Status.Flying, Status.Landed]:
+            self.velocity.xy = (0, 0)
+            return
+
+        if pyxel.btn(pyxel.KEY_S):
+            self.thrust.y += 1
+
+        if pyxel.btn(pyxel.KEY_A):
+            self.thrust.x += 1
+
+        if pyxel.btn(pyxel.KEY_D):
+            self.thrust.x += -1
+
+        if pyxel.btnr(pyxel.KEY_A) or pyxel.btnr(pyxel.KEY_D):
+            self.thrust.x = 0
+
+        if pyxel.btnr(pyxel.KEY_S):
+            self.thrust.y = 0
+
+        self.fuel -= (self.thrust.y + abs(self.thrust.x)) // 10
+
     @property
     def hull(self) -> Bitmap:
         try:
@@ -158,15 +181,18 @@ class Lander(Rect):
 
     def update(self, dt: float, gravity: Point) -> None:
 
-        logger.info(f"{self.xy} {self.status} {self.altitude} {self.velocity.xy=}")
+        if self.status == Status.Exploding:
+            self.explosion_radius -= 2
+            return
 
-        match self.status:
-            case Status.Exploding:
-                return
-            case Status.Crashed:
-                return
-            case Status.Landed:
-                self.velocity.xy = 0, 0
+        if self.status == Status.Crashed:
+            return
+
+        if pyxel.frame_count % 20 == 0:
+            self.nav_light_colors.reverse()
+
+        if self.status in [Status.Landed]:
+            self.velocity.xy = 0, 0
 
         self.thrust.x = constrain(self.thrust.x, -10, 10)
         self.thrust.y = constrain(self.thrust.y, 0, 10)
@@ -175,14 +201,8 @@ class Lander(Rect):
 
         self -= self.velocity
 
-        self.xy = map(int, self.xy)
-
-        self.x = wrap(self.x, 0, pyxel.width)
-
-        self.fuel -= (self.thrust.y + abs(self.thrust.x)) // 10
-
-        if pyxel.frame_count % 20 == 0:
-            self.nav_light_colors.reverse()
+        self.x = int(wrap(self.x, 0, pyxel.width))
+        self.y = int(max(0, self.y))
 
         if pyxel.frame_count % 3 == 0:
             self.exhaust_r.h *= -1
@@ -221,6 +241,12 @@ class Lander(Rect):
     def draw_crash(self) -> None:
         self.crashed_hull.draw(self.x, self.y)
 
+    def draw_explosion(self) -> None:
+        logger.info("Exploding!")
+        if pyxel.frame_count % 100:
+            logger.info("Done exploding")
+            self._status = Status.Crashed
+
     def draw(self):
 
         if self.status in [Status.Flying, Status.Landed]:
@@ -228,5 +254,8 @@ class Lander(Rect):
             self.draw_main_engine_exhaust()
             self.draw_thruster_exhaust()
 
-        if self.is_crashed or self.is_exploding:
+        if self.is_exploding:
+            self.draw_explosion()
+
+        if self.is_crashed:
             self.draw_crash()

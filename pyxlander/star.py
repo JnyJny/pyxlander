@@ -9,7 +9,6 @@ import pyxel
 
 from twod import Point
 
-from .catalog import Twinkle0, Twinkle1
 from .utils import wrapxy
 
 
@@ -25,9 +24,6 @@ class Star(Point):
         super().__init__(x, y)
         self.color = color or randint(1, 15)
         self.twinkle_interval = randint(100, 300)
-
-    def __repr__(self) -> str:
-        return f"Star(x={self.x}, y={self.y}, color={self.color}, twinkle={self.twinkle_interval})"
 
     def update(self, dx: int, dy: int, w: int, h: int):
         # XXX what happens when dx,dy > w,h?
