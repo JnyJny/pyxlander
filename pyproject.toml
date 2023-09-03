@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyxlander"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["JnyJny <erik.oshaughnessy@gmail.com>"]
 readme = "README.md"
@@ -18,6 +18,45 @@ loguru = "^0.7.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 poethepoet = "^0.22.0"
+
+[tool.poe.tasks]
+
+# requirements
+
+requirements = [
+ { cmd = "poetry export -o requirements.txt" },
+ { cmd = "git add requirements.txt" },
+ { cmd = "git commit -m 'requirements.txt updated from poetry.lock'"},
+]
+
+# update version in pyproject
+
+_patch_bump = "poetry version patch"
+_minor_bump = "poetry version minor"
+_major_bump = "poetry version major"
+
+# add, commit, tag and push updated pyproject
+
+_add = "git add pyproject.toml"
+_commit = {shell = "git commit -m `poetry version -s`"}
+_tag = { shell = "git tag `poetry version -s`" }
+_push = "git push --all"
+
+_update_pyproject = ["_add", "_commit", "_tag", "_push"]
+
+_patch_update = ["_patch_bump", "_update_pyproject"]
+_minor_update = ["_minor_bump", "_update_pyproject"]
+_major_update = ["_major_bump", "_update_pyproject"]
+
+# publish
+
+_publish = "poetry publish"
+
+publish_patch = ["_patch_update", "_publish"]
+publish_minor = ["_minor_update", "_publish"]
+publish_major = ["_major_update", "_publish"]
+
+publish = {ref = "publish_patch"}
 
 [build-system]
 requires = ["poetry-core"]
