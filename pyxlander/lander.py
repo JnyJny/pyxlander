@@ -156,9 +156,6 @@ class Lander(Rect):
     def altitude(self, value: int) -> None:
         self._altitude = int(value - (self.y + self.hull.h))
 
-    def wrap(self, width: int) -> None:
-        self.x = wrap(self.x, 0, width)
-
     def update(self, dt: float, gravity: Point) -> None:
 
         logger.info(f"{self.xy} {self.status} {self.altitude} {self.velocity.xy=}")
@@ -179,6 +176,8 @@ class Lander(Rect):
         self -= self.velocity
 
         self.xy = map(int, self.xy)
+
+        self.x = wrap(self.x, 0, pyxel.width)
 
         self.fuel -= (self.thrust.y + abs(self.thrust.x)) // 10
 
