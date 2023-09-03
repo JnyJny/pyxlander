@@ -1,122 +1,233 @@
 """
 """
 
-import pyxel
-from twod import Point
 import random
-from .utils import constrain
-from .catalog import LanderHull, Exhaust_L, Exhaust_R, Exhaust_D
-from .sprite import Sprite
+
+import pyxel
+
+from loguru import logger
+from twod import Point, Rect
 
 
-class Lander(Point):
-    def __init__(self, x, y, fuel=1000, mass=1):
-        super().__init__(x, y)
+from .utils import constrain, wrapxy, wrap
+from .catalog import Catalog
+from .bitmap import Bitmap
+
+from enum import Enum
+
+
+class Status(int, Enum):
+    Flying: int = 1
+    Landed: int = 2
+    Exploding: int = 3
+    Crashed: int = 4
+
+    @classmethod
+    def for_conditions(cls, altitude: int, velocity: Point) -> "Status":
+
+        altitude = int(altitude)
+
+        velocity.xy = int(velocity.x), int(velocity.y)
+
+        if altitude > 0:
+            return cls.Flying
+
+        for (xlimit, ylimit), status in {
+            (4, 4): cls.Exploding,
+            (2, 2): cls.Crashed,
+        }.items():
+            if any([velocity.x >= xlimit, velocity.y >= ylimit]):
+                return status
+        else:
+            return cls.Landed
+
+
+class Lander(Rect):
+    def __init__(
+        self, x: int, y: int, ground: int, fuel: int = 1000, mass: int = 1
+    ) -> None:
+        super().__init__(x, y, 1, 1)
         self.thrust = Point(0, 0)
         self.velocity = Point(0, 0)
         self.fuel = fuel
         self.mass = mass
         self.nav_light_colors = [3, 8]
-        self.nav_port = (x + 2, y + 2)
-        self.nav_stbd = (x + 9, y + 2)
+        self.altitude = ground
+        self.w = self.hull.w
+        self.h = self.hull.h
 
-    def __str__(self):
-        return f"  DX: {self.dy:06d}\nFUEL: {self.fuel:06d}"
+    def __str__(self) -> str:
+        return f"  DY: {self.dy:06d}\nFUEL: {self.fuel:06d}"
 
     @property
-    def hull(self) -> Sprite:
+    def status(self) -> Status:
+        try:
+            if self._status in [Status.Crashed, Status.Exploding]:
+                return self._status
+        except AttributeError:
+            pass
+        self._status = Status.for_conditions(self.altitude, abs(self.velocity))
+        return self._status
+
+    @property
+    def is_flying(self) -> bool:
+        return self.status == Status.Flying
+
+    @property
+    def is_crashed(self) -> bool:
+        return self.status == Status.Crashed
+
+    @property
+    def is_exploding(self) -> bool:
+        return self.status == Status.Exploding
+
+    @property
+    def is_landed(self) -> bool:
+        return self.status == Status.Landed
+
+    @property
+    def hull(self) -> Bitmap:
         try:
             return self._hull
         except AttributeError:
             pass
-        self._hull = Sprite(self.x, self.y, LanderHull)
+        self._hull = Bitmap(*Catalog["LanderHull"])
         return self._hull
 
     @property
-    def exhaust_l(self) -> Sprite:
+    def crashed_hull(self) -> Bitmap:
+        try:
+            return self._crashed_hull
+        except AttributeError:
+            pass
+        self._crashed_hull = Bitmap(*Catalog["CrashedHull"])
+        return self._crashed_hull
+
+    @property
+    def port_nav_light(self) -> tuple[int, int]:
+        return self.x + 2, self.y + 2
+
+    @property
+    def stbd_nav_light(self) -> tuple[int, int]:
+        return self.x + 9, self.y + 2
+
+    @property
+    def exhaust_l(self) -> Bitmap:
         try:
             return self._exhaust_l
         except AttributeError:
             pass
-        self._exhaust_l = Sprite(self.x - 7, self.y + 3, Exhaust_L)
+        self._exhaust_l = Bitmap(*Catalog["Exhaust_L"])
         return self._exhaust_l
 
     @property
-    def exhaust_r(self) -> Sprite:
+    def exhaust_r(self) -> Bitmap:
         try:
             return self._exhaust_r
         except AttributeError:
             pass
-        self._exhaust_r = Sprite(self.x + 11, self.y + 3, Exhaust_R)
+        self._exhaust_r = Bitmap(*Catalog["Exhaust_R"])
         return self._exhaust_r
 
     @property
-    def exhaust_d(self) -> Sprite:
+    def exhaust_d(self) -> Bitmap:
         try:
             return self._exhaust_d
         except AttributeError:
             pass
-        self._exhaust_d = Sprite(self.x + 4, self.y + 11, Exhaust_D)
+        self._exhaust_d = Bitmap(*Catalog["Exhaust_D"])
+
         return self._exhaust_d
 
-    #    def move(self, dt, gravity=Point(), drag=Point()):
-    #        '''
-    #        '''
-    #        prev = Point(self.position)
-    #        A = self.acceleration + gravity + drag
-    #        self.velocity += A * dt
-    #        self.position += self.velocity
-    #        return prev
+    @property
+    def dust(self) -> Bitmap:
+        try:
+            return self._dust
+        except AttributeError:
+            pass
+        self._dust = Bitmap(*Catalog["Dust"])
+        return self._dust
 
-    def update(self, dt: float, gravity: Point = None, drag: Point = None) -> None:
+    @property
+    def altitude(self) -> int:
+        return getattr(self, "_altitude", pyxel.height - self.hull.h)
 
-        gravity = gravity or Point(-10, 0)
-        drag = Point(0, 0)
+    @altitude.setter
+    def altitude(self, value: int) -> None:
+        self._altitude = int(value - (self.y + self.hull.h))
 
-        self.prev = Point(self)
+    def wrap(self, width: int) -> None:
+        self.x = wrap(self.x, 0, width)
 
-        self.thrust.x = constrain(self.thrust.x, -15, 15)
-        self.thrust.y = constrain(self.thrust.y, 0, 15)
+    def update(self, dt: float, gravity: Point) -> None:
 
-        A = self.thrust + gravity + drag
+        logger.info(f"{self.xy} {self.status} {self.altitude} {self.velocity.xy=}")
 
-        self.velocity += A * dt
-        self += self.velocity
+        match self.status:
+            case Status.Exploding:
+                return
+            case Status.Crashed:
+                return
+            case Status.Landed:
+                self.velocity.xy = 0, 0
+
+        self.thrust.x = constrain(self.thrust.x, -10, 10)
+        self.thrust.y = constrain(self.thrust.y, 0, 10)
+
+        self.velocity += (self.thrust + gravity) * dt
+
+        self -= self.velocity
+
+        self.xy = map(int, self.xy)
 
         self.fuel -= (self.thrust.y + abs(self.thrust.x)) // 10
 
         if pyxel.frame_count % 20 == 0:
             self.nav_light_colors.reverse()
 
-        if pyxel.frame_count % 5 == 0:
-            for exhaust in [self.exhaust_r, self.exhaust_l]:
-                exhaust.bitmap.h *= -1
-            for exhaust in [self.exhaust_d]:
-                exhaust.bitmap.w *= -1
+        if pyxel.frame_count % 3 == 0:
+            self.exhaust_r.h *= -1
+            self.exhaust_l.h *= -1
+            self.exhaust_d.w *= -1
 
-    def draw_hull(self):
+    def draw_hull(self) -> None:
         """ """
-        self.hull.draw()
-        pyxel.pset(*self.nav_port, self.nav_light_colors[0])
-        pyxel.pset(*self.nav_stbd, self.nav_light_colors[1])
+        self.hull.draw(*self.xy)
+        pyxel.pset(*self.port_nav_light, self.nav_light_colors[0])
+        pyxel.pset(*self.stbd_nav_light, self.nav_light_colors[1])
 
-    def draw_main_engine_exhaust(self):
+    def draw_main_engine_exhaust(self) -> None:
         """ """
+
         if self.thrust.y == 0:
             return
-        self.exhaust_d.draw()
 
-    def draw_thruster_exhaust(self):
+        self.exhaust_d.draw(self.x + 4, self.y + 11)
+
+        if self.altitude <= 16:
+            for dy in range(-5, 10, 2):
+                self.dust.w *= -1
+                self.dust.draw(self.x + dy, self.y + (self.hull.h - 3))
+
+    def draw_thruster_exhaust(self) -> None:
 
         if self.thrust.x == 0:
             return
 
         if self.thrust.x < 0:
-            self.exhaust_l.draw()
+            self.exhaust_l.draw(self.x - 7, self.y + 3)
         else:
-            self.exhaust_r.draw()
+            self.exhaust_r.draw(self.x + 11, self.y + 3)
+
+    def draw_crash(self) -> None:
+        self.crashed_hull.draw(self.x, self.y)
 
     def draw(self):
-        self.draw_hull()
-        self.draw_main_engine_exhaust()
-        self.draw_thruster_exhaust()
+
+        if self.status in [Status.Flying, Status.Landed]:
+            self.draw_hull()
+            self.draw_main_engine_exhaust()
+            self.draw_thruster_exhaust()
+
+        if self.is_crashed or self.is_exploding:
+            self.draw_crash()

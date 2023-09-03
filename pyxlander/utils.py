@@ -1,21 +1,32 @@
-'''
-'''
+"""
+"""
 
 
-def will_wrap(value, lo, hi):
+def will_wrap(value: int, lo: int, hi: int) -> bool:
     return value < lo or value > hi
 
-def wrap(value, lo, hi):
+
+def wrap(value: int, lo: int, hi: int) -> int:
     if value > hi:
         return lo
     if value < lo:
         return hi
     return value
 
-def constrain(value, lo, hi):
+
+def constrain(value: int | float, lo: int | float, hi: int | float) -> int | float:
     return min(hi, max(lo, value))
 
-def wrapxy(x, y, w, h, ox=0, oy=0, randomize_on_wrap=False):
+
+def wrapxy(
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    ox: int = 0,
+    oy: int = 0,
+    randomize_on_wrap: bool = False,
+) -> tuple[int, int]:
 
     if randomize_on_wrap:
         if will_wrap(x, ox, w):
@@ -24,7 +35,3 @@ def wrapxy(x, y, w, h, ox=0, oy=0, randomize_on_wrap=False):
             pass
 
     return wrap(x, ox, w), wrap(y, oy, h)
-
-        
-            
-        

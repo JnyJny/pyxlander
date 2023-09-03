@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-import random
+from random import randint
 
 import pyxel
 
@@ -14,15 +14,20 @@ from .utils import wrapxy
 
 
 class Star(Point):
+    """ """
+
     @classmethod
     def factory(cls, count: int, w: int, h: int) -> list[Star]:
-        coords = [(random.randint(0, h), random.randint(0, w)) for _ in range(0, count)]
-        return [cls(*xy) for xy in coords]
+        coords = [(randint(0, h), randint(0, w)) for _ in range(0, count)]
+        return [cls(x, y) for x, y in coords]
 
     def __init__(self, x: int, y: int, color: int = None):
         super().__init__(x, y)
-        self.color = color or random.randrange(1, 16)
-        self.twinkle_interval = random.randint(10, 100)
+        self.color = color or randint(1, 15)
+        self.twinkle_interval = randint(100, 300)
+
+    def __repr__(self) -> str:
+        return f"Star(x={self.x}, y={self.y}, color={self.color}, twinkle={self.twinkle_interval})"
 
     def update(self, dx: int, dy: int, w: int, h: int):
         # XXX what happens when dx,dy > w,h?
@@ -32,7 +37,7 @@ class Star(Point):
 
         self.xy = wrapxy(*dp.xy, w, h, randomize_on_wrap=True)
 
-    def draw(self):
+    def draw(self) -> None:
         if pyxel.frame_count % self.twinkle_interval == 0:
             pyxel.circb(*self.xy, 1, self.color)
         else:
