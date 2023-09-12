@@ -7,6 +7,7 @@ from random import randint
 
 import pyxel
 
+from loguru import logger
 from twod import Point
 
 from .utils import wrapxy

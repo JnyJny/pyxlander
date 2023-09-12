@@ -12,6 +12,7 @@ from twod import Point, Rect
 from .utils import constrain, wrapxy, wrap
 from .catalog import Catalog
 from .bitmap import Bitmap
+from .terrain import Terrain
 
 from enum import Enum
 
@@ -23,11 +24,9 @@ class Status(int, Enum):
     Crashed: int = 4
 
     @classmethod
-    def for_conditions(cls, altitude: int, velocity: Point) -> "Status":
+    def for_conditions(cls, altitude: int, vx: int, vy: int) -> "Status":
 
         altitude = int(altitude)
-
-        velocity.xy = int(velocity.x), int(velocity.y)
 
         if altitude > 0:
             return cls.Flying
@@ -36,7 +35,7 @@ class Status(int, Enum):
             (4, 4): cls.Exploding,
             (2, 2): cls.Crashed,
         }.items():
-            if any([velocity.x >= xlimit, velocity.y >= ylimit]):
+            if any([int(vx) >= xlimit, int(vy) >= ylimit]):
                 return status
         else:
             return cls.Landed
@@ -56,18 +55,26 @@ class Lander(Rect):
         self.w = self.hull.w
         self.h = self.hull.h
 
+        self.update_dispatch = {
+            Status.Flying: self.update_flying,
+            Status.Landed: self.update_landed,
+            Status.Exploding: self.update_exploding,
+            Status.Crashed: self.update_crashed,
+        }
+
+        self.draw_dispatch = {
+            Status.Flying: self.draw_flying,
+            Status.Landed: self.draw_landed,
+            Status.Exploding: self.draw_exploding,
+            Status.Crashed: self.draw_crashed,
+        }
+
     def __str__(self) -> str:
         return f"  DY: {self.dy:06d}\nFUEL: {self.fuel:06d}"
 
     @property
     def status(self) -> Status:
-        try:
-            if self._status in [Status.Crashed, Status.Exploding]:
-                return self._status
-        except AttributeError:
-            pass
-        self._status = Status.for_conditions(self.altitude, abs(self.velocity))
-        return self._status
+        return Status.for_conditions(self.altitude, *abs(self.velocity).xy)
 
     @property
     def is_flying(self) -> bool:
@@ -179,20 +186,7 @@ class Lander(Rect):
     def altitude(self, value: int) -> None:
         self._altitude = int(value - (self.y + self.hull.h))
 
-    def update(self, dt: float, gravity: Point) -> None:
-
-        if self.status == Status.Exploding:
-            self.explosion_radius -= 2
-            return
-
-        if self.status == Status.Crashed:
-            return
-
-        if pyxel.frame_count % 20 == 0:
-            self.nav_light_colors.reverse()
-
-        if self.status in [Status.Landed]:
-            self.velocity.xy = 0, 0
+    def update_flying(self, dt: float, gravity: Point) -> None:
 
         self.thrust.x = constrain(self.thrust.x, -10, 10)
         self.thrust.y = constrain(self.thrust.y, 0, 10)
@@ -204,10 +198,32 @@ class Lander(Rect):
         self.x = int(wrap(self.x, 0, pyxel.width))
         self.y = int(max(0, self.y))
 
+        if pyxel.frame_count % 20 == 0:
+            self.nav_light_colors.reverse()
+
         if pyxel.frame_count % 3 == 0:
             self.exhaust_r.h *= -1
             self.exhaust_l.h *= -1
             self.exhaust_d.w *= -1
+
+    def update_landed(self, dt: float, gravity: Point) -> None:
+
+        if pyxel.frame_count % 20 == 0:
+            self.nav_light_colors.reverse()
+
+    def update_crashed(self, dt: float, gravity: Point) -> None:
+        pass
+
+    def update_exploding(self, dt: float, gravity: Point) -> None:
+
+        if self.status == Status.Exploding:
+            self.fuel -= 2
+
+    def update(self, dt: float, gravity: Point, terrain: Terrain) -> None:
+
+        self.update_dispatch[self.status](dt, gravity)
+
+        self.altitude = terrain.ground
 
     def draw_hull(self) -> None:
         """ """
@@ -238,24 +254,23 @@ class Lander(Rect):
         else:
             self.exhaust_r.draw(self.x + 11, self.y + 3)
 
-    def draw_crash(self) -> None:
+    def draw_flying(self) -> None:
+
+        self.draw_hull()
+        self.draw_main_engine_exhaust()
+        self.draw_thruster_exhaust()
+
+    def draw_landed(self) -> None:
+        self.draw_hull()
+
+    def draw_crashed(self) -> None:
         self.crashed_hull.draw(self.x, self.y)
 
-    def draw_explosion(self) -> None:
-        logger.info("Exploding!")
-        if pyxel.frame_count % 100:
-            logger.info("Done exploding")
-            self._status = Status.Crashed
+    def draw_exploding(self) -> None:
+
+        if pyxel.frame_count % 2:
+            pyxel.circb(*self.center, self.fuel, 9)
 
     def draw(self):
 
-        if self.status in [Status.Flying, Status.Landed]:
-            self.draw_hull()
-            self.draw_main_engine_exhaust()
-            self.draw_thruster_exhaust()
-
-        if self.is_exploding:
-            self.draw_explosion()
-
-        if self.is_crashed:
-            self.draw_crash()
+        self.draw_dispatch[self.status]()

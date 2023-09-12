@@ -16,6 +16,5 @@ class Background(Rect):
         self.stars = Star.factory(n_stars, w, h - 16)
 
     def draw(self) -> None:
-
         for star in self.stars:
             star.draw()

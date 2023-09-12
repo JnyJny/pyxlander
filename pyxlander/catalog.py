@@ -17,6 +17,3 @@ Catalog: dict[str, tuple[int, int, int, int]] = {
     "Exhaust_R": (8, 16, -8, 3),
     "Dust": (8, 24, 8, 8),
 }
-
-Twinkle0: Bitmap = Bitmap(48, 0, 3, 3)
-Twinkle1: Bitmap = Bitmap(51, 0, 3, 3)

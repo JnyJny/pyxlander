@@ -101,7 +101,7 @@ class Game:
 
     def update_play(self) -> None:
         self.lander.apply_input()
-        self.lander.update(self.dt, self.gravity)
+        self.lander.update(self.dt, self.gravity, self.terrain)
         self.lander.altitude = self.terrain.ground
 
         if not self.lander.is_flying:
@@ -124,29 +124,29 @@ class Game:
 
     def draw_title(self) -> None:
 
-        self.terrain.draw()
         self.ctext(66, "Pyxlander", pyxel.frame_count % 16)
         self.ctext(126, "- PRESS ENTER -", 13)
 
     def draw_play(self) -> None:
 
-        self.terrain.draw()
         self.lander.draw()
         self.hud.draw(self.lander, self.score, self.lives)
 
     def draw_gameover(self) -> None:
 
-        self.terrain.draw()
         self.lander.draw()
 
         message = "WINNER!" if self.lander.is_landed else "GAME OVER"
+
         self.ctext(66, message, pyxel.frame_count % 16)
-        self.ctext(126, "- PRESS ENTER -", 13)
+        self.ctext(126, "- PRESS ENTER TO PLAY AGAIN -", 13)
 
     def draw(self) -> None:
 
         pyxel.cls(0)
+
         self.background.draw()
+        self.terrain.draw()
 
         try:
             self.draw_dispatch[self.scene]()

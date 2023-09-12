@@ -39,4 +39,4 @@ class Terrain(Rect):
         return self.h - 8
 
     def draw(self) -> None:
-        pyxel.bltm(0, 0, 0, self.x, self.y, self.w, self.h)
+        pyxel.bltm(0, 0, 0, self.x, self.y, self.w, self.h, 0)
