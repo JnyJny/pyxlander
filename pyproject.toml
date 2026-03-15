@@ -1,67 +1,28 @@
-[tool.poetry]
+[project]
 name = "pyxlander"
-version = "0.2.2"
-description = ""
-authors = ["JnyJny <erik.oshaughnessy@gmail.com>"]
+version = "0.1.0"
+description = "Add your description here"
 readme = "README.md"
-
-[tool.poetry.scripts]
-pyxlander = "pyxlander.__main__:cli"
-
-[tool.poetry.dependencies]
-python = "^3.11"
-twod = "^0.2.9"
-pyxel = "^1.9.18"
-typer = "^0.9.0"
-loguru = "^0.7.0"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-poethepoet = "^0.22.0"
-
-[tool.poe.tasks]
-
-# requirements
-
-requirements = [
- { cmd = "poetry export -o requirements.txt" },
- { cmd = "git add requirements.txt" },
- { cmd = "git commit -m 'requirements.txt updated from poetry.lock'"},
+authors = [
+    { name = "JnyJny", email = "erik.oshaughnessy@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "loguru>=0.7.3",
+    "pyxel>=2.8.3",
+    "twod>=0.3.1",
+    "typer>=0.24.1",
 ]
 
-# update version in pyproject
-
-_patch_bump = "poetry version patch"
-_minor_bump = "poetry version minor"
-_major_bump = "poetry version major"
-
-# add, commit, tag and push updated pyproject
-
-_add = "git add pyproject.toml"
-_commit = {shell = "git commit -m `poetry version -s`"}
-_tag = { shell = "git tag `poetry version -s`" }
-_push = "git push --all"
-
-_update_pyproject = ["_add", "_commit", "_tag", "_push"]
-
-_patch_update = ["_patch_bump", "_update_pyproject"]
-_minor_update = ["_minor_bump", "_update_pyproject"]
-_major_update = ["_major_bump", "_update_pyproject"]
-
-patch_update = {ref = "_patch_update"}
-minor_update = {ref = "_minor_update"}
-major_update = {ref = "_major_update"}
-
-# publish
-
-_publish = "poetry publish"
-
-publish_patch = ["_patch_update", "_publish"]
-publish_minor = ["_minor_update", "_publish"]
-publish_major = ["_major_update", "_publish"]
-
-publish = {ref = "publish_patch"}
+[project.scripts]
+pyxlander = "pyxlander.__main__:cli"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.9.11,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.42.1",
+    "ptest>=2.0.3",
+]
